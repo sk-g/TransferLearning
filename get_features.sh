@@ -1,25 +1,25 @@
 start=$SECONDS
 
 echo "VGG19"
-python3 transfer_learning.py --model=VGG19
+python3 main.py --model=VGG19
 
 echo "InceptionResNetV2"
-python3 transfer_learning.py --model=InceptionResNetV2
+python3 main.py --model=InceptionResNetV2
 
 echo "Xception"
-python3 transfer_learning.py --model=Xception
+python3 main.py --model=Xception
 
 echo "InceptionV3"
-python3 transfer_learning.py --model=InceptionV3
+python3 main.py --model=InceptionV3
 
 echo "DenseNet"
-python3 transfer_learning.py --model=DenseNet
+python3 main.py --model=DenseNet
 
 echo "ResNet50"
-python3 transfer_learning.py --model=ResNet50
+python3 main.py --model=ResNet50
 
 echo "VGG16"
-python3 transfer_learning.py --model=VGG16
+python3 main.py --model=VGG16
 duration=$((SECONDS-start))
 
 if (( $duration > 3600 )) ; then
