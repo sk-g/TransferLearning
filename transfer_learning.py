@@ -118,6 +118,7 @@ class DataLoader(object):
 		plt.show()
 
 class Augmentation(object):
+
 	def __init__(self,data_object = None,model = 'ResNet50'):
 		
 		if not data_object:
@@ -150,7 +151,7 @@ class Augmentation(object):
 		
 		if model == 'InceptionResNetV2':
 			model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False,
-									   weights='imagenet')
+										 weights='imagenet')
 		
 		elif model == 'ResNet50':
 			model = keras.applications.resnet50.ResNet50(include_top=False, 
@@ -159,23 +160,23 @@ class Augmentation(object):
 
 		elif model == 'Xception':
 			keras.applications.xception.Xception(include_top=False,
-									   weights='imagenet')
+										 weights='imagenet')
 		
 		elif model == 'VGG16':
 			model = keras.applications.vgg16.VGG16(include_top=False,
-									   weights='imagenet')
+										 weights='imagenet')
 
 		elif model == 'VGG19':
 			model = keras.applications.vgg19.VGG19(include_top=False,
-									   weights='imagenet')
+										 weights='imagenet')
 		
 		elif model == 'InceptionV3':
 			model = keras.applications.inception_v3.InceptionV3(include_top=False,
-									   weights='imagenet')
+										 weights='imagenet')
 		
 		elif model == 'DenseNet':
 			model = keras.applications.densenet.DenseNet201(include_top=False,
-									   weights='imagenet')
+										 weights='imagenet')
 		else:
 			print('{} not implemented yet!'.format(model))
 
@@ -230,7 +231,11 @@ class Augmentation(object):
 		
 class predictors(object):
 	
-	def __init__(self,load = True, model='ResNet50'):
+	def __init__(self,load = True, model='ResNet50',
+		x_eval = None,
+		y_eval = None):
+		self.model = model
+		"""		
 		if  not load:
 			if not model:
 				print('no model selected')
@@ -246,19 +251,85 @@ class predictors(object):
 				raise ValueError('No model selected to load!')
 		else:
 			raise ValueError('load bottleneck features or create them first')
+			"""
 	
 	@staticmethod
 	def accuracy(matrix):
 		return (np.trace(matrix)) * 1.0 / np.sum(matrix)
 	
 	@staticmethod
-	def eval_metrics(clf, x_eval=eval_data_flat_pca  ,y_eval=eval_labels_aug ):
+	def pca(train_data_flat, num_features):
+			pca = PCA(n_components = num_features)
+			pca.fit(train_data_flat)
+			train_data_flat_pca = pca.transform(train_data_flat)
+			print(train_data_flat_pca.shape)
+			return train_data_flat_pca	
+			
+	@staticmethod
+	def eval_metrics(clf, x_eval=None  ,y_eval = None ):
 		pred = clf.predict(x_eval)
-		print(onfusion_matrix(y_eval, pred))
-		print(accuracy(confusion_matrix(y_eval, pred)))
+		print(confusion_matrix(y_eval, pred))
+		print(predictors.accuracy(confusion_matrix(y_eval, pred)))
 		print(f1_score(y_eval, pred, average= 'micro'))
 		print(f1_score(y_eval, pred, average= 'macro'))
 		print(f1_score(y_eval, pred, average= 'weighted'))
+
+	@staticmethod
+	def lr(train_data, label):
+			logistic_clf = linear_model.LogisticRegression(penalty="l2", 
+				class_weight="balanced", 
+				max_iter=100, verbose=1)
+			logistic_clf.fit(train_data, label)
+			return logistic_clf
+	@staticmethod
+	def svm(train_data, train_labels_augmented):
+			svc = svm.SVC(C=0.5, kernel='linear')
+			param_grid = [
+						{'C': [0.5, 1, 5], 'kernel': ['linear']},
+						{'C': [0.1, 1, 5], 'gamma': [0.001], 'kernel': ['rbf']},
+					 ]
+			kernel = ['linear', 'rbf']
+			Cs = [0.1, 0.3, 1]    
+			clf = GridSearchCV(estimator=svc, param_grid=param_grid, cv=10, n_jobs=-1,)
+			clf.fit(train_data, train_labels_augmented)
+			print(clf.best_score_)
+			print(clf.best_estimator_.C)
+			print(clf.best_estimator_.kernel)
+			print(clf.best_params_)
+	
+	@staticmethod
+	def random_forest(X, y):
+			k_fold = 10
+			kf_total = KFold(n_splits=k_fold)
+			forest = RandomForestClassifier(n_estimators=250,
+																		random_state=0)
+			#estimators_list = [50, 100, 150, 250, 500, 800, 1000]  
+			estimators_list = [50, 150, 500]  
+			clf_forest = GridSearchCV(estimator=forest, 
+				param_grid=dict(n_estimators=estimators_list, 
+					warm_start=[True, False]), 
+				cv=k_fold, n_jobs=-1)
+			cms = [confusion_matrix(eval_labels_aug, 
+				clf_forest.fit(X,y).predict(eval_data_flat_pca)) for train, test in kf_total.split(X)]
+			accuracies = []
+			for cm in cms:
+					accuracies.append(accuracy(cm))
+			print(accuracies)
+			print(np.mean(accuracies))
+
+	@staticmethod
+	def calls(train_data_flat_pca,train_labels_aug,x_eval = None,y_eval = None):
+
+		clf = predictors.lr(train_data_flat_pca, train_labels_aug)
+		predictors.eval_metrics(clf,x_eval = x_eval, y_eval = y_eval)
+		cv_results_ = predictors.svm(train_data_flat_pca, train_labels_aug)
+		
+		# gridsearch SVM later
+		#clf =svm_best(train_data_flat_pca, train_labels_aug)
+		#eval_metrics(clf,x_eval = x_eval, y_eval = y_eval)
+		
+		predictors.random_forest(train_data_flat_pca, train_labels_aug)			
+		
 
 def main():
 	
@@ -285,7 +356,17 @@ def main():
 	
 	test_data_aug, test_labels_aug, bottleneck_features_test = augmenter.save_bottleneck_features(
 		train = False)
-
+	"""
+	predictor = predictors()
+	
+	def flatten(array):#move this to class as static method?
+		return predictors.pca(np.reshape(array,(array.shape[0],-1)),2000)
+	train_data_flat_pca = flatten(bottleneck_features_train)
+	test_data_flat_pca = flatten(bottleneck_features_test)
+	predictors.calls(train_data_flat_pca,train_labels_aug,
+		x_eval = test_data_flat_pca,
+		y_eval = test_labels_aug)
+	"""
 
 if __name__ == '__main__':
 	main()

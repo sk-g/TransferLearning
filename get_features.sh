@@ -1,9 +1,4 @@
 start=$SECONDS
-echo "ResNet50"
-python3 transfer_learning.py --model=ResNet50
-
-echo "VGG16"
-python3 transfer_learning.py --model=VGG16
 
 echo "VGG19"
 python3 transfer_learning.py --model=VGG19
@@ -20,6 +15,11 @@ python3 transfer_learning.py --model=InceptionV3
 echo "DenseNet"
 python3 transfer_learning.py --model=DenseNet
 
+echo "ResNet50"
+python3 transfer_learning.py --model=ResNet50
+
+echo "VGG16"
+python3 transfer_learning.py --model=VGG16
 duration=$((SECONDS-start))
 
 if (( $duration > 3600 )) ; then
